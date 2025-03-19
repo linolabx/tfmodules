@@ -1,8 +1,18 @@
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+locals {
+  id = "${local.service.name}-${random_string.suffix.result}"
+}
+
 resource "kubernetes_service" "this" {
   count = var.service == null ? 1 : 0
   metadata {
     namespace = var.namespace
-    name      = local.service.name
+    name      = local.id
   }
 
   spec {
@@ -22,7 +32,7 @@ resource "kubernetes_manifest" "cors" {
     kind       = "Middleware"
     metadata = {
       namespace = var.namespace
-      name      = "${local.service.name}-cors"
+      name      = "${local.id}-cors"
     }
     spec = {
       headers = {
@@ -43,7 +53,7 @@ resource "kubernetes_manifest" "redirect_https" {
     kind       = "Middleware"
     metadata = {
       namespace = var.namespace
-      name      = "${local.service.name}-redirect-https"
+      name      = "${local.id}-redirect-https"
     }
     spec = {
       redirectScheme = {
@@ -70,7 +80,7 @@ locals {
 resource "kubernetes_ingress_v1" "this" {
   metadata {
     namespace = var.namespace
-    name      = "${local.service.name}-${local.service_port_name == null ? local.service_port_number : local.service_port_name}-ingress"
+    name      = "${local.id}-${local.service_port_name == null ? local.service_port_number : local.service_port_name}-ingress"
     annotations = merge({
       "cert-manager.io/${provider::corefunc::str_kebab(var.issuer_kind)}" = var.issuer
 
@@ -120,7 +130,7 @@ resource "kubernetes_ingress_v1" "this" {
 }
 
 output "service_hostname" {
-  value       = "${local.service.name}.${var.namespace}.svc.cluster.local"
+  value       = "${local.id}.${var.namespace}.svc.cluster.local"
   description = "service hostname used in kubernetes, e.g. srv-name.namespace.svc.cluster.local"
 }
 
@@ -130,6 +140,6 @@ output "service_port" {
 }
 
 output "service_hostport" {
-  value       = var.app == null ? null : "${local.service.name}.${var.namespace}.svc.cluster.local:${var.app.port}"
+  value       = var.app == null ? null : "${local.id}.${var.namespace}.svc.cluster.local:${var.app.port}"
   description = "service host and port used in kubernetes, e.g. srv-name.namespace.svc.cluster.local:8080"
 }
