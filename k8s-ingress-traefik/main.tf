@@ -11,89 +11,59 @@ terraform {
   }
 }
 
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 variable "namespace" {
   type        = string
   description = "namespace to deploy to"
 }
 
-variable "app" {
-  type = object({
-    name = string
-    port = number
-  })
-  default     = null
-  description = "this module will create a service for the app, ignored if `service` variable is provided"
+variable "hostmap" {
+  type = list(object({
+    domain  = string
+    app     = optional(string, null)
+    service = optional(string, null)
+    port    = number
+  }))
+  description = "map of domains to apps or services"
 }
 
-variable "service" {
-  type = object({
-    name = string
-    port = map(any)
-  })
-  description = "service to use for ingress, if provided, `app` variable is ignored"
-  default     = null
-}
-locals {
-  service = var.service == null ? {
-    name = "${var.app.name}-svc"
-    port = { name = "http" }
-  } : var.service
-
-  service_port_name   = lookup(local.service.port, "name", null)
-  service_port_number = lookup(local.service.port, "number", null)
-}
-check "port_conflict" {
+check "hostmap_conflict" {
   assert {
-    condition     = (local.service_port_name == null) != (local.service_port_number == null)
-    error_message = "service port name and number cant be set at the same time"
+    condition     = alltrue([for h in var.hostmap : (h.app != null ? 1 : 0) + (h.service != null ? 1 : 0) == 1])
+    error_message = "for each hostmap entry, either app or service must be provided, but not both"
   }
 }
 
-variable "domain" {
-  type    = string
-  default = null
+locals {
+  readable_identifier = substr(join("-", sort(distinct([
+    for hm in var.hostmap : hm.app == null ? hm.service : hm.app
+  ]))), 0, 64)
 }
-variable "domains" {
-  type    = list(string)
+
+variable "issuer" { type = object({
+  name = string
+  kind = optional(string, "cluster-issuer")
+}) }
+
+variable "ingress_tls" {
+  type = list(object({
+    hosts       = list(string)
+    secret_name = string
+  }))
   default = []
 }
-check "domain_exists" {
-  assert {
-    condition     = length(local.domains) > 0
-    error_message = "domains must be provided"
-  }
-}
-check "domain_dupset" {
-  assert {
-    condition     = (var.domain == null) != (length(var.domains) == 0)
-    error_message = "domain and domains cant be set at the same time"
-  }
-}
-locals {
-  domains = var.domain == null ? var.domains : [var.domain]
-}
 
-variable "issuer" { type = string }
-
-variable "issuer_kind" {
-  type    = string
-  default = "cluster-issuer"
-}
-
-variable "tls" { type = list(object({
-  hosts       = list(string)
-  secret_name = string
-})) }
-
-variable "cors" {
-  type = object({
-    origins = list(string)
-    methods = list(string)
-  })
-  default = null
+variable "cert_domains" {
+  type    = list(string)
+  default = []
 }
 
 variable "redirect_https" {
   type    = bool
-  default = false
+  default = true
 }
