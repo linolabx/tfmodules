@@ -2,13 +2,9 @@ locals {
   _app_service = { for hm in var.hostmap : hm.app => hm... if hm.app != null }
 
   services = { for app, srvs in local._app_service : app => {
-    app = app
-    srv = "${app}-${random_string.suffix.result}"
-    ports = [for srv in srvs : {
-      app  = app
-      srv  = "${app}-${random_string.suffix.result}"
-      port = srv.port
-    }]
+    app   = app
+    srv   = "${app}-${random_string.suffix.result}"
+    ports = distinct([for srv in srvs : srv.port])
   } }
 }
 
@@ -25,8 +21,8 @@ resource "kubernetes_service" "this" {
     dynamic "port" {
       for_each = each.value.ports
       content {
-        name = "http-${port.value.port}"
-        port = port.value.port
+        name = "http-${port.value}"
+        port = port.value
       }
     }
   }
@@ -110,15 +106,15 @@ resource "kubernetes_ingress_v1" "this" {
 
 locals {
   output_hosts = concat(
-    [for p in concat([for srv in local.services : srv.ports]...) : {
-      key  = "${p.app}-${p.port}"
-      host = "${p.srv}.${var.namespace}.svc.cluster.local"
-      port = p.port
-    }],
+    flatten([for srv in local.services : [for p in srv.ports : {
+      key  = "${srv.app}-${p}"
+      host = "${srv.srv}.${var.namespace}.svc.cluster.local"
+      port = p
+    }]]),
     [for srv in local.services : {
       key  = srv.app
       host = "${srv.srv}.${var.namespace}.svc.cluster.local"
-      port = srv.ports[0].port
+      port = srv.ports[0]
     } if length(srv.ports) == 1],
   )
 }
