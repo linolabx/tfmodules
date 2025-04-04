@@ -35,7 +35,7 @@ resource "kubernetes_service" "this" {
 resource "kubernetes_manifest" "redirect_https" {
   count = var.redirect_https ? 1 : 0
   manifest = {
-    apiVersion = "traefik.containo.us/v1alpha1"
+    apiVersion = "traefik.io/v1alpha1"
     kind       = "Middleware"
     metadata = {
       namespace = var.namespace
