@@ -92,6 +92,14 @@ resource "kubernetes_manifest" "issuer" {
   }
 }
 
+output "cloudflare_creds" {
+  value = {
+    email      = nonsensitive(var.cloudflare.email)
+    account_id = nonsensitive(var.cloudflare.account_id)
+    api_token  = sensitive(cloudflare_api_token.this.value)
+  }
+}
+
 output "issuer" {
   value = {
     name = nonsensitive(kubernetes_manifest.issuer.manifest.metadata.name)
