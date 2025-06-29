@@ -108,26 +108,27 @@ locals {
   output_hosts = concat(
     flatten([for srv in local.services : [for p in srv.ports : {
       key  = "${srv.app}-${p}"
-      host = "${srv.srv}.${var.namespace}.svc.cluster.local"
+      host = "${srv.srv}.${var.namespace}.svc.${var.cluster_domain}"
       port = p
     }]]),
     [for srv in local.services : {
       key  = srv.app
-      host = "${srv.srv}.${var.namespace}.svc.cluster.local"
+      host = "${srv.srv}.${var.namespace}.svc.${var.cluster_domain}"
       port = srv.ports[0]
     } if length(srv.ports) == 1],
   )
 }
 
 output "service" {
-  value = nonsensitive({
-    for i in local.output_hosts : i.key => {
+  value = nonsensitive(zipmap(
+    [for i in local.output_hosts : i.key],
+    [for i in local.output_hosts : {
       host     = i.host
       port     = i.port
       hostport = "${i.host}:${i.port}"
       addr     = "http://${i.host}:${i.port}"
-    }
-  })
+    }]
+  ))
 }
 
 output "domains" {

@@ -17,6 +17,12 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
+variable "cluster_domain" {
+  type        = string
+  description = "cluster domain"
+  default     = "cluster.local"
+}
+
 variable "namespace" {
   type        = string
   description = "namespace to deploy to"
