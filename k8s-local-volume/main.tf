@@ -75,6 +75,8 @@ resource "kubernetes_persistent_volume_claim" "this" {
     replace_triggered_by = [terraform_data.storage_host]
   }
 
+  depends_on = [kubernetes_persistent_volume.this]
+
   metadata {
     namespace = var.namespace
     name      = var.name
