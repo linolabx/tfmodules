@@ -51,10 +51,13 @@ locals {
   ]))), 0, 64)
 }
 
-variable "issuer" { type = object({
-  name = string
-  kind = optional(string, "cluster-issuer")
-}) }
+variable "issuer" {
+  type = object({
+    name = string
+    kind = optional(string, "cluster-issuer")
+  })
+  default = null
+}
 
 variable "ingress_tls" {
   type = list(object({

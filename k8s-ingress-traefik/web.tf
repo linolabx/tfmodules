@@ -54,16 +54,17 @@ locals {
   middleware_annotations = length(local.middlewares) == 0 ? {} : {
     "traefik.ingress.kubernetes.io/router.middlewares" = join(",", local.middlewares)
   }
+
+  issuer_annotations = var.issuer != null ? {
+    "cert-manager.io/${provider::corefunc::str_kebab(var.issuer.kind)}" = var.issuer.name
+  } : {}
 }
 
 resource "kubernetes_ingress_v1" "this" {
   metadata {
-    namespace = var.namespace
-    name      = "${local.readable_identifier}-${random_string.suffix.result}"
-    annotations = merge({
-      "cert-manager.io/${provider::corefunc::str_kebab(var.issuer.kind)}" = var.issuer.name
-      "kubernetes.io/ingress.class"                                       = "traefik"
-    }, local.middleware_annotations)
+    namespace   = var.namespace
+    name        = "${local.readable_identifier}-${random_string.suffix.result}"
+    annotations = merge({ "kubernetes.io/ingress.class" = "traefik" }, local.issuer_annotations, local.middleware_annotations)
   }
 
   spec {
